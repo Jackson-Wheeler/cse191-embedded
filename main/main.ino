@@ -178,8 +178,6 @@ void setup()
   // setup our timebase
   mainTask.attach(runPeriod, setRunFlag);
 
-  // CSE191 to do - REGISTER device
-
 }
 
 void setRunFlag() {
