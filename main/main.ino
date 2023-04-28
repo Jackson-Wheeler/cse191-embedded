@@ -22,6 +22,9 @@ const int scanTime = 1; //In seconds
 int iteration = 0;
 bool timeout = false;
 
+int log_fail_count = 0;
+int scan_fail_count = 0;
+
 BLEScan* pBLEScan;
 Ticker mainTask;
 
@@ -241,11 +244,6 @@ void setup()
 { 
   pinMode(LED_PIN, OUTPUT); // configures the LED pin to behave as an output
 
-  // allows for resetting (rebooting) the board
-  // digitalWrite(RESET_PIN, HIGH);
-  // delay(200); 
-  // pinMode(RESET_PIN, OUTPUT);
-
   Serial.begin(115200);
   while(!Serial){delay(100);} // Serial=true when Serial port is ready
   Serial.println(F("*************** Booting up... ******************"));
@@ -307,6 +305,20 @@ void checkWifiConnection() {
 void scan() {
   Serial.println(F("*********** Beginning Scan ***************"));    
   BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
+
+  // Check scan is working
+  if(bleDevices.empty()) {
+    scan_fail_count++;
+    Serial.println("Scan results = 0");
+    // reboot if scan not picking anything up 11 times in a row
+    if(scan_fail_count > 10) {
+      Serial.println("Scan failed 11 times in a row -> rebooting");
+      rebootBoard();
+    }
+  } else {
+    scan_fail_count = 0;
+  }
+
   pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory
   Serial.println("");
   Serial.println(F("*********** Scan Ended ***************"));
@@ -334,7 +346,14 @@ void logDevice() {
   // attempt to post the data
   String resp = postJsonHTTP(API_LOG_DEVICE, dataStr);
   if (resp == ERROR_RESP){
-    // TODO: what to do on /log-device failure?
+    log_fail_count++;
+    if (log_fail_count > 2) {
+      Serial.println("logDevice() failed 3 times -> rebooting");
+      rebootBoard();
+    }
+  } else {
+    // success
+    log_fail_count = 0;
   }
 
   // clear the map
@@ -351,7 +370,7 @@ void loop()
 
     scan();
     delay(200);
-
+    
     // true when time to log-devices
     if (timeout) {
       checkWifiConnection();
