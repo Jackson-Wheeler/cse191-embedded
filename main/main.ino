@@ -5,13 +5,21 @@
 #include <Arduino.h>
 #include <Ticker.h>
 #include <map>
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
+
 
 #define LED_PIN 2
 
 
-const float runPeriod = 1; //seconds
-
+const float runPeriod = 5; //seconds
 bool timeout = false;
+
+int scanTime = 1; //In seconds
+BLEScan* pBLEScan;
+String strList = "";
 
 Ticker mainTask;
 
@@ -22,12 +30,38 @@ String API_BASE_URL = "http://cse191.ucsd.edu/api"; // root url of api
 String API_HEALTH = API_BASE_URL + "/health";
 String API_REGISTER_DEVICE = API_BASE_URL + "/register-device";
 
-
 // create MAC storage, keys are mac addresses, values are rssi values
 std::map<std::string, double> macAddresses;
 
+/*****************
+ *   Scanning 
+ *****************/
+void parseBeacon(BLEAdvertisedDevice dev) {
 
-String  postJsonHTTP(String url, String jLoad) {
+  // check if mac address exists in map
+  // add if doesn't already exist
+
+  // Serial.print(String(dev.getAddress().toString().c_str()));
+  // Serial.print(String(dev.getAddress().toString().c_str()));
+  // Serial.print(" ");
+  // Serial.println(String(dev.getRSSI()));
+
+  Serial.println("hi");
+
+}
+
+class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
+  // This function is called for every device that BLEScan scans!
+  void onResult(BLEAdvertisedDevice advertisedDevice) {
+    parseBeacon(advertisedDevice);
+  }
+};
+
+
+/***************************
+ *   Set Up Helper Functions 
+ ***************************/
+String postJsonHTTP(String url, String jLoad) {
 
   HTTPClient httpC;
   String resp="";   
@@ -134,6 +168,28 @@ void checkApiConn() {
   httpC.end();  //Free resources
 }
 
+void connectToWifi() {
+  Serial.println();
+  Serial.println("******************************************************");
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+  }
+
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  Serial.println("MAC: ");
+  Serial.println(getMacStr());
+}
+
 void registerDevice() {
   String groupNumber = "69";
   String macAddr = getMacStr();
@@ -160,64 +216,71 @@ void logDevice() {
   // TODO: what to do on /log-device failure?
 }
 
+void setUpBLEScan() {
+  BLEDevice::init("");
+  pBLEScan = BLEDevice::getScan(); //create new scan
+  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+  pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
+  pBLEScan->setInterval(100);
+  pBLEScan->setWindow(99);  // less or equal setInterval value
+}
+
+
+/*****************
+ *   Set Up 
+ *****************/
 void setup()
 {
   pinMode(LED_PIN, OUTPUT); // configures the LED pin to behave as an output
 
   Serial.begin(115200);
   while(!Serial){delay(100);} // Serial=true when Serial port is ready
+  Serial.println("*************** Booting up... ******************");
 
   // We start by connecting to a WiFi network
-
-  Serial.println();
-  Serial.println("******************************************************");
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(".");
-  }
-
-
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-  Serial.println("MAC: ");
-  Serial.println(getMacStr());
-
-  StaticJsonDocument<2000> locationDoc = getGeoLocation();
+  //connectToWifi();
+  
+  //StaticJsonDocument<2000> locationDoc = getGeoLocation();
 
   // Check connection to our API
-  checkApiConn();
+  //checkApiConn();
 
   // Register device api call
-  registerDevice();
- 
+  //registerDevice();
 
   // setup our timebase
   mainTask.attach(runPeriod, setRunFlag);
   
 }
 
+/**************************
+ *   Other Helper Functions 
+ **************************/
 void setRunFlag() {
   timeout = true;
 }
-
 
 void blink() {
   digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 }
 
 
+/*****************
+ *   Main Loop 
+ *****************/
 void loop()
 {
   if (timeout) {
+    blink(); // tells us our device is up and running
+    Serial.println("working");
     
     // perform the scan, get whatever data structure it gives
+    Serial.println("*********** Beginning Scan ***************");    
+    strList = "";
+    BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
+    pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory
+    delay(200);
+    Serial.println("*********** Scan Ended ***************");
 
     // convert that data structure to the map (skip existing values)
 
