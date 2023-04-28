@@ -211,7 +211,8 @@ void logDevice() {
   // manually format the json for each device in the map
   for (std::map<String,double>::iterator it=macAddresses.begin(); it!=macAddresses.end(); ++it) {
     String mac = it->first;
-    String rssi = std::to_string(it->second).c_str();
+    //String rssi = std::toString(it->second).c_str();
+    String rssi = ""; // TEMP CODE
     dataStr += "{\"mac\": \"" + mac + "\", \"rssi\": \"" + rssi + "\"},";
   }
   // remove extra comma
@@ -297,7 +298,7 @@ void loop()
   
   // true when time to log-devices
   if (timeout) {
-    logDevices();
+    logDevice();
 
     timeout = false;
   }
