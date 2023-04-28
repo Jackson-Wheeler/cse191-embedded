@@ -17,14 +17,16 @@ Ticker mainTask;
 
 const char* ssid     = "UCSD-DEVICE"; 
 const char* password = "Fj7UPsFHb84e";
+//const char* ssid     = "RESNET-GUEST-DEVICE"; 
+//const char* password = "ResnetConnect";
 
 String API_BASE_URL = "http://cse191.ucsd.edu/api"; // root url of api
 String API_HEALTH = API_BASE_URL + "/health";
 String API_REGISTER_DEVICE = API_BASE_URL + "/register-device";
-
+String API_LOG_DEVICE = API_BASE_URL + "/log-devices";
 
 // create MAC storage, keys are mac addresses, values are rssi values
-std::map<std::string, double> macAddresses;
+std::map<String, double> macAddresses;
 
 
 String  postJsonHTTP(String url, String jLoad) {
@@ -149,13 +151,20 @@ void logDevice() {
   String macAddr = getMacStr();
   // Body of HTTP Post - empty list of devices to start out
   String dataStr = "{\"gn\":\"" + groupNumber + "\",\"espmac\":\"" + macAddr + "\",\"devices\":[";
-  // manually format the json for each device
-  for (int i = 0; i < macAddresses.size(); i++) {
-    
+  // manually format the json for each device in the map
+  for (std::map<String,double>::iterator it=macAddresses.begin(); it!=macAddresses.end(); ++it) {
+    String mac = it->first;
+    String rssi = std::to_string(it->second).c_str();
+    dataStr += "{\"mac\": \"" + mac + "\", \"rssi\": \"" + rssi + "\"},";
   }
+  // remove extra comma
+  if (macAddresses.size() > 0)
+    dataStr.remove(dataStr.length() - 1);
+  // close the list and the json object
+  dataStr += "]}";
   
   // post the data
-  postJsonHTTP(API_REGISTER_DEVICE, dataStr);
+  postJsonHTTP(API_LOG_DEVICE, dataStr);
 
   // TODO: what to do on /log-device failure?
 }
@@ -197,7 +206,6 @@ void setup()
   // Register device api call
   registerDevice();
  
-
   // setup our timebase
   mainTask.attach(runPeriod, setRunFlag);
   
@@ -216,11 +224,10 @@ void blink() {
 void loop()
 {
   if (timeout) {
-    
     // perform the scan, get whatever data structure it gives
 
     // convert that data structure to the map (skip existing values)
-
+    
 
     // m.insert(std::make_pair("a", 1));
    
