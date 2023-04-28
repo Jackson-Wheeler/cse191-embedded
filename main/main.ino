@@ -12,8 +12,10 @@
 
 
 #define LED_PIN 2
-
-
+#define RESET_PIN 4
+ 
+ 
+const String ERROR_RESP = "ERROR";
 const float runPeriod = 5; //seconds
 const int scanTime = 1; //In seconds
 int iteration = 0;
@@ -40,10 +42,6 @@ std::map<String, String> bleDevices;
  *****************/
 void parseBeacon(BLEAdvertisedDevice dev) {
   Serial.print(".");
-
-  // TODO: check if mac address exists in map
-  // add if doesn't already exist then add it
-  // change map value to be a macAddr,rssi pair?
   
   // get the values
   String mac = String(dev.getAddress().toString().c_str());
@@ -66,6 +64,14 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 /***************************
  *   Set Up Helper Functions 
  ***************************/
+void rebootBoard() {
+  Serial.println("");
+  Serial.println("Resetting (Rebooting) Board...");
+  delay(500);
+  //digitalWrite(RESET_PIN, LOW);
+  ESP.restart();
+}
+
 String postJsonHTTP(String url, String jLoad) {
 
   HTTPClient httpC;
@@ -83,7 +89,7 @@ String postJsonHTTP(String url, String jLoad) {
 
   int httpCode = httpC.POST(jLoad);              //Send the actual POST request
 
-  if(httpCode>0){
+  if(httpCode == 200){
 
     resp = httpC.getString();    //Get the response to the request
     
@@ -93,7 +99,7 @@ String postJsonHTTP(String url, String jLoad) {
 
   }
   else {
-    resp = "ERROR";
+    resp = ERROR_RESP;
     Serial.print("Error on sending POST: ");
     Serial.println(httpCode);
 
@@ -102,7 +108,7 @@ String postJsonHTTP(String url, String jLoad) {
   httpC.end();  //Free resources
 
   return resp;
- }
+}
 
 // StaticJsonDocument<2000>  getGeoLocation() {
 
@@ -144,6 +150,29 @@ String getMacStr() {
   return buffer;
 }
 
+void connectToWifi() {
+  int connectionTries = 0;
+  Serial.print(F("Connecting to "));
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+      connectionTries++;
+      // Reboot if taking too long to connect
+      if (connectionTries > 15) {
+        rebootBoard();
+      }
+  }
+
+  Serial.println("");
+  Serial.println(F("WiFi connected"));
+  Serial.print(F("IP address: "));
+  Serial.println(String(WiFi.localIP()));
+}
+
 /* Checks connection to our API by calling \health */
 void checkApiConn() {
   HTTPClient httpC;
@@ -151,7 +180,7 @@ void checkApiConn() {
   bool connected = true;
   
   Serial.print(F("Checking API connection: "));
-  Serial.print(url);
+  Serial.println(url);
 
   httpC.begin(url);             // Specify destination for HTTP request
   int httpCode = httpC.GET();   // Make the GET request
@@ -171,37 +200,26 @@ void checkApiConn() {
       Serial.println(resp);
     }
     // TODO: logic for connection failure?
+    rebootBoard();
+
   }
 
   httpC.end();  //Free resources
 }
 
-void connectToWifi() {
-  Serial.print(F("Connecting to "));
-  Serial.println(ssid);
-
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(".");
-  }
-
-  Serial.println("");
-  Serial.println(F("WiFi connected"));
-  Serial.print(F("IP address: "));
-  Serial.println(WiFi.localIP());
-}
-
 void registerDevice() {
   Serial.println(F("Registering Device"));
-  String groupNumber = "69";
+  String groupNumber = "0";
   String macAddr = getMacStr();
   // Body of HTTP Post - empty list of devices to start out
   String dataStr = "{\"gn\":\"" + groupNumber + "\",\"espmac\":\"" + macAddr + "\"}";
   
-  postJsonHTTP(API_REGISTER_DEVICE, dataStr);
-  // TODO: what to do on /register-device failure?
+  String resp = postJsonHTTP(API_REGISTER_DEVICE, dataStr);
+    
+  // on /register-device failure
+  if (resp == ERROR_RESP) {
+    rebootBoard();
+  }
 }
 
 void setUpBLEScan() {
@@ -219,8 +237,13 @@ void setUpBLEScan() {
  *   Set Up 
  *****************/
 void setup()
-{
+{ 
   pinMode(LED_PIN, OUTPUT); // configures the LED pin to behave as an output
+
+  // allows for resetting (rebooting) the board
+  // digitalWrite(RESET_PIN, HIGH);
+  // delay(200); 
+  // pinMode(RESET_PIN, OUTPUT);
 
   Serial.begin(115200);
   while(!Serial){delay(100);} // Serial=true when Serial port is ready
@@ -230,15 +253,15 @@ void setup()
   Serial.println(getMacStr());
 
   // We start by connecting to a WiFi network
-  //connectToWifi();
+  connectToWifi();
   
   //StaticJsonDocument<2000> locationDoc = getGeoLocation();
 
   // Check connection to our API
-  //checkApiConn();
+  checkApiConn();
 
   // Register device api call
-  //registerDevice();
+  registerDevice();
 
   setUpBLEScan();
 
@@ -291,7 +314,7 @@ void scan() {
 void logDevice() {
   Serial.println("Logging Devices");
   
-  String groupNumber = "69";
+  String groupNumber = "0";
   String macAddr = getMacStr();
   // Body of HTTP Post - empty list of devices to start out
   String dataStr = "{\"gn\":\"" + groupNumber + "\",\"espmac\":\"" + macAddr + "\",\"devices\":[";
@@ -321,7 +344,8 @@ void logDevice() {
  *****************/
 void loop()
 {
-  if (iteration < 1) {
+  // TEMPRORARY: for testing code
+  if (iteration < 10) {
 
     blink(); // tells us our device is up and running
 
@@ -330,7 +354,7 @@ void loop()
 
     // true when time to log-devices
     if (timeout) {
-      //checkWifiConnection();
+      checkWifiConnection();
       //logDevice();
 
       timeout = false;
