@@ -254,15 +254,15 @@ void setup()
   Serial.println("*************** Booting up... ******************");
 
   // We start by connecting to a WiFi network
-  //connectToWifi();
+  connectToWifi();
   
-  //StaticJsonDocument<2000> locationDoc = getGeoLocation();
+  StaticJsonDocument<2000> locationDoc = getGeoLocation();
 
   // Check connection to our API
-  //checkApiConn();
+  checkApiConn();
 
   // Register device api call
-  //registerDevice();
+  registerDevice();
 
   setUpBLEScan();
 
