@@ -135,6 +135,7 @@ void registerDevice() {
   String dataStr = "{\"gn\":\"" + groupNumber + "\",\"espmac\":\"" + macAddr + "\"}";
   
   postJsonHTTP(API_REGISTER_DEVICE, dataStr);
+  // TODO: what to do on /register-device failure?
 }
 
 void setup()
@@ -200,10 +201,11 @@ void loop()
     // CSE191 to do - scan BLE beacons
 
     // CSE191 to do - if beacons are found log them using our API
-    // String apiUrl = "http://cse191.ucsd.edu/api00/test";
-    // String dataStr = "{\"name\":\"Ian\",\"msg\":\"IoT is fun\"}";
+    // Example from starter code:
+      // String apiUrl = "http://cse191.ucsd.edu/api00/test";
+      // String dataStr = "{\"name\":\"Ian\",\"msg\":\"IoT is fun\"}";
 
-    // String resp = postJsonHTTP(apiUrl, dataStr);
+      // String resp = postJsonHTTP(apiUrl, dataStr);
 
     timeout = false;
   }
