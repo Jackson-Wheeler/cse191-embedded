@@ -19,7 +19,7 @@ bool timeout = false;
 
 int scanTime = 1; //In seconds
 BLEScan* pBLEScan;
-String strList = "";
+int iteration = 0;
 
 Ticker mainTask;
 
@@ -34,24 +34,26 @@ String API_REGISTER_DEVICE = API_BASE_URL + "/register-device";
 String API_LOG_DEVICE = API_BASE_URL + "/log-devices";
 
 // create MAC storage, keys are mac addresses, values are rssi values
-std::map<String, double> macAddresses;
+std::map<String, String> bleDevices;
 
 /*****************
  *   Scanning 
  *****************/
 void parseBeacon(BLEAdvertisedDevice dev) {
+  Serial.print(".");
 
   // TODO: check if mac address exists in map
-  // add if doesn't already exist
+  // add if doesn't already exist then add it
+  // change map value to be a macAddr,rssi pair?
   
   // get the values
-  String mac = dev.getAddress().toString().c_str();
-  String rssiStr = dev.getAddress().toString().c_str();
-  double rssi = rssiStr.toDouble();
+  String mac = String(dev.getAddress().toString().c_str());
+  String rssi = String(dev.getRSSI());
 
-  // log to terminal?
-
-  macAddresses[mac] = rssi;
+  // Add entry to map if doesn't already exist
+  if(!bleDevices.count(mac)) {
+    bleDevices[mac] = rssi;
+  }
 }
 
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
@@ -195,6 +197,7 @@ void connectToWifi() {
 }
 
 void registerDevice() {
+  Serial.println("Registering Device");
   String groupNumber = "69";
   String macAddr = getMacStr();
   // Body of HTTP Post - empty list of devices to start out
@@ -212,13 +215,13 @@ void logDevice() {
   // Body of HTTP Post - empty list of devices to start out
   String dataStr = "{\"gn\":\"" + groupNumber + "\",\"espmac\":\"" + macAddr + "\",\"devices\":[";
   // manually format the json for each device in the map
-  for (std::map<String,double>::iterator it=macAddresses.begin(); it!=macAddresses.end(); ++it) {
+  for (std::map<String,String>::iterator it=bleDevices.begin(); it!=bleDevices.end(); ++it) {
     String mac = it->first;
-    String rssi = String(it->second, 2);
+    String rssi = it->second;
     dataStr += "{\"mac\": \"" + mac + "\", \"rssi\": \"" + rssi + "\"},";
   }
   // remove extra comma
-  if (macAddresses.size() > 0)
+  if (bleDevices.size() > 0)
     dataStr.remove(dataStr.length() - 1);
   // close the list and the json object
   dataStr += "]}";
@@ -227,12 +230,13 @@ void logDevice() {
   postJsonHTTP(API_LOG_DEVICE, dataStr);
 
   // clear the map
-  macAddresses.clear();
+  bleDevices.clear();
 
   // TODO: what to do on /log-device failure?
 }
 
 void setUpBLEScan() {
+  Serial.println("Setting up BLEScan");
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
@@ -254,15 +258,15 @@ void setup()
   Serial.println("*************** Booting up... ******************");
 
   // We start by connecting to a WiFi network
-  connectToWifi();
+  //connectToWifi();
   
-  StaticJsonDocument<2000> locationDoc = getGeoLocation();
+  //StaticJsonDocument<2000> locationDoc = getGeoLocation();
 
   // Check connection to our API
-  checkApiConn();
+  //checkApiConn();
 
   // Register device api call
-  registerDevice();
+  //registerDevice();
 
   setUpBLEScan();
 
@@ -282,30 +286,44 @@ void blink() {
   digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 }
 
+void scan() {
+  Serial.println("*********** Beginning Scan ***************");    
+  BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
+  pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory
+  Serial.println("");
+  Serial.println("*********** Scan Ended ***************");
+}
+
+void printMap() {
+  Serial.println("Printing Map");
+  for(const auto& elem : bleDevices){
+    Serial.println(elem.first + " " + elem.second);
+  }
+}
+
 
 /*****************
  *   Main Loop 
  *****************/
 void loop()
 {
-  blink(); // tells us our device is up and running
-  Serial.println("working");
+  // TEMPORARY: to just run three times
+  if (iteration < 3) {
+    blink(); // tells us our device is up and running
   
-  // perform the scan, get whatever data structure it gives
-  Serial.println("*********** Beginning Scan ***************");    
-  strList = "";
-  BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
-  pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory
-  Serial.println("*********** Scan Ended ***************");
-  delay(500);
+    scan();
+    delay(200);
 
-  // m.insert(std::make_pair("a", 1));
-  
-  // true when time to log-devices
-  if (timeout) {
-    logDevice();
+    // m.insert(std::make_pair("a", 1));
+    
+    // true when time to log-devices
+    if (timeout) {
+      //logDevice();
 
-    timeout = false;
+      timeout = false;
+    }
+
+    iteration++;
   }
 }
 
