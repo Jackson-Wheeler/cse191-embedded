@@ -41,12 +41,10 @@ void parseBeacon(BLEAdvertisedDevice dev) {
   // check if mac address exists in map
   // add if doesn't already exist
 
-  // Serial.print(String(dev.getAddress().toString().c_str()));
-  // Serial.print(String(dev.getAddress().toString().c_str()));
-  // Serial.print(" ");
-  // Serial.println(String(dev.getRSSI()));
-
-  Serial.println("hi");
+  Serial.print(String(dev.getAddress().toString().c_str()));
+  Serial.print(String(dev.getAddress().toString().c_str()));
+  Serial.print(" ");
+  Serial.println(String(dev.getRSSI()));
 
 }
 
@@ -247,6 +245,8 @@ void setup()
 
   // Register device api call
   //registerDevice();
+
+  setUpBLEScan();
 
   // setup our timebase
   mainTask.attach(runPeriod, setRunFlag);
