@@ -304,8 +304,12 @@ void loop()
   // true when time to log-devices
   if (timeout) {
     // checks WiFi before attempting to log
-    while (WiFi.status() != WL_CONNECTED) {
+    if (WiFi.status() != WL_CONNECTED) {
+      WiFi.disconnect();
       WiFi.begin(ssid, password);
+      delay(500);
+    }
+    while (WiFi.status() != WL_CONNECTED) {
       delay(500);
     }
     logDevice();
