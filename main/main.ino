@@ -1,7 +1,7 @@
 #include "WiFi.h"
 #include "HTTPClient.h"
 #include "esp_wps.h"
-#include "ArduinoJson.h"
+// #include "ArduinoJson.h"
 #include <Arduino.h>
 #include <Ticker.h>
 #include <map>
@@ -15,12 +15,11 @@
 
 
 const float runPeriod = 5; //seconds
+const int scanTime = 1; //In seconds
+int iteration = 0;
 bool timeout = false;
 
-int scanTime = 1; //In seconds
 BLEScan* pBLEScan;
-int iteration = 0;
-
 Ticker mainTask;
 
 const char* ssid     = "UCSD-DEVICE"; 
@@ -28,10 +27,10 @@ const char* password = "Fj7UPsFHb84e";
 //const char* ssid     = "RESNET-GUEST-DEVICE"; 
 //const char* password = "ResnetConnect";
 
-String API_BASE_URL = "http://cse191.ucsd.edu/api"; // root url of api
-String API_HEALTH = API_BASE_URL + "/health";
-String API_REGISTER_DEVICE = API_BASE_URL + "/register-device";
-String API_LOG_DEVICE = API_BASE_URL + "/log-devices";
+const String API_BASE_URL = "http://cse191.ucsd.edu/api"; // root url of api
+const String API_HEALTH = "http://cse191.ucsd.edu/api/health";
+const String API_REGISTER_DEVICE = "http://cse191.ucsd.edu/api/register-device";
+const String API_LOG_DEVICE = "http://cse191.ucsd.edu/api/log-devices";
 
 // create MAC storage, keys are mac addresses, values are rssi values
 std::map<String, String> bleDevices;
@@ -73,8 +72,10 @@ String postJsonHTTP(String url, String jLoad) {
   String resp="";   
 
   // debug info
-  Serial.println("POST: "+url);
-  Serial.println("JSON: "+jLoad);
+  Serial.print("POST: ");
+  Serial.println(url);
+  Serial.print("JSON: ");
+  Serial.println(jLoad);
 
   
   httpC.begin(url);                        //Specify destination for HTTP request
@@ -86,7 +87,7 @@ String postJsonHTTP(String url, String jLoad) {
 
     resp = httpC.getString();    //Get the response to the request
     
-    Serial.print("POST Code: ");
+    Serial.print(F("POST Code: "));
     Serial.println(httpCode);   //Print return code
     Serial.println(resp);       //Print request answer
 
@@ -103,36 +104,36 @@ String postJsonHTTP(String url, String jLoad) {
   return resp;
  }
 
-StaticJsonDocument<2000>  getGeoLocation() {
+// StaticJsonDocument<2000>  getGeoLocation() {
 
-  StaticJsonDocument<2000> jDoc;
+//   StaticJsonDocument<2000> jDoc;
   
-  // get geo location info
-  String locStr = "https://api.iplocation.net/?ip=99.10.120.238";
+//   // get geo location info
+//   String locStr = "https://api.iplocation.net/?ip=99.10.120.238";
   
-  // debug info
-  Serial.println("Getting Location: "+locStr);
-  String loc = postJsonHTTP(locStr, "");
+//   // debug info
+//   Serial.println("Getting Location: "+locStr);
+//   String loc = postJsonHTTP(locStr, "");
 
-  // debug
-  Serial.println(loc);
+//   // debug
+//   Serial.println(loc);
 
-  // parse json (need zipcode and timezone) -> jDoc
-  DeserializationError error = deserializeJson(jDoc, loc);
+//   // parse json (need zipcode and timezone) -> jDoc
+//   DeserializationError error = deserializeJson(jDoc, loc);
   
-  // Test if parsing succeeds.
-  if (!error) {
-    // do something with data - example
-    String i = jDoc["isp"];
-    Serial.println("connected via "+i);
-  }
-  else {
-    Serial.println("parseObject() failed");
-  }
+//   // Test if parsing succeeds.
+//   if (!error) {
+//     // do something with data - example
+//     String i = jDoc["isp"];
+//     Serial.println("connected via "+i);
+//   }
+//   else {
+//     Serial.println("parseObject() failed");
+//   }
 
-  return jDoc;
+//   return jDoc;
 
-}
+// }
 
 String getMacStr() {
   char buffer[24];
@@ -149,22 +150,23 @@ void checkApiConn() {
   String url = API_HEALTH;
   bool connected = true;
   
-  Serial.println("Checking API connection: " + url);
+  Serial.print(F("Checking API connection: "));
+  Serial.print(url);
 
   httpC.begin(url);             // Specify destination for HTTP request
   int httpCode = httpC.GET();   // Make the GET request
 
   // Check status of request
   if (httpCode == 200) {
-    Serial.println("Connection Successful");
+    Serial.println(F("Connection Successful"));
     // Success -> carry on
   } else {
     if (httpCode <= 0) {
-      Serial.print("HTTP Error. HTTP Code: ");
+      Serial.print(F("HTTP Error. HTTP Code: "));
       Serial.println(httpCode);
     } else {
       String resp = httpC.getString();
-      Serial.print("API Connection Failure. HTTP Code: ");
+      Serial.print(F("API Connection Failure. HTTP Code: "));
       Serial.println(httpCode);
       Serial.println(resp);
     }
@@ -175,9 +177,7 @@ void checkApiConn() {
 }
 
 void connectToWifi() {
-  Serial.println();
-  Serial.println("******************************************************");
-  Serial.print("Connecting to ");
+  Serial.print(F("Connecting to "));
   Serial.println(ssid);
 
   WiFi.begin(ssid, password);
@@ -187,17 +187,14 @@ void connectToWifi() {
       Serial.print(".");
   }
 
-
   Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
+  Serial.println(F("WiFi connected"));
+  Serial.print(F("IP address: "));
   Serial.println(WiFi.localIP());
-  Serial.println("MAC: ");
-  Serial.println(getMacStr());
 }
 
 void registerDevice() {
-  Serial.println("Registering Device");
+  Serial.println(F("Registering Device"));
   String groupNumber = "69";
   String macAddr = getMacStr();
   // Body of HTTP Post - empty list of devices to start out
@@ -207,36 +204,8 @@ void registerDevice() {
   // TODO: what to do on /register-device failure?
 }
 
-void logDevice() {
-  Serial.println("Logging Devices");
-  
-  String groupNumber = "69";
-  String macAddr = getMacStr();
-  // Body of HTTP Post - empty list of devices to start out
-  String dataStr = "{\"gn\":\"" + groupNumber + "\",\"espmac\":\"" + macAddr + "\",\"devices\":[";
-  // manually format the json for each device in the map
-  for (std::map<String,String>::iterator it=bleDevices.begin(); it!=bleDevices.end(); ++it) {
-    String mac = it->first;
-    String rssi = it->second;
-    dataStr += "{\"mac\": \"" + mac + "\", \"rssi\": \"" + rssi + "\"},";
-  }
-  // remove extra comma
-  if (bleDevices.size() > 0)
-    dataStr.remove(dataStr.length() - 1);
-  // close the list and the json object
-  dataStr += "]}";
-  
-  // post the data
-  postJsonHTTP(API_LOG_DEVICE, dataStr);
-
-  // clear the map
-  bleDevices.clear();
-
-  // TODO: what to do on /log-device failure?
-}
-
 void setUpBLEScan() {
-  Serial.println("Setting up BLEScan");
+  Serial.println(F("Setting up BLEScan"));
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
@@ -255,7 +224,10 @@ void setup()
 
   Serial.begin(115200);
   while(!Serial){delay(100);} // Serial=true when Serial port is ready
-  Serial.println("*************** Booting up... ******************");
+  Serial.println(F("*************** Booting up... ******************"));
+
+  Serial.print(F("MAC: "));
+  Serial.println(getMacStr());
 
   // We start by connecting to a WiFi network
   //connectToWifi();
@@ -286,38 +258,79 @@ void blink() {
   digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 }
 
-void scan() {
-  Serial.println("*********** Beginning Scan ***************");    
-  BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
-  pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory
-  Serial.println("");
-  Serial.println("*********** Scan Ended ***************");
-}
+// void printMap() {
+//   Serial.println(F("Printing Map"));
+//   for(const auto& elem : bleDevices){
+//     Serial.print(elem.first);
+//     Serial.print(" ");
+//     Serial.pringln(elem.second);
+//   }
+// }
 
-void printMap() {
-  Serial.println("Printing Map");
-  for(const auto& elem : bleDevices){
-    Serial.println(elem.first + " " + elem.second);
+void checkWifiConnection() {
+  Serial.print(F("Checking WiFi Connection to "));
+  Serial.println(ssid);
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println(F("Reconnecting WiFi"));
+    WiFi.disconnect();
+    delay(500);
+    connectToWifi();
+  } else {
+    Serial.println(F("Connected"));
   }
 }
 
+void scan() {
+  Serial.println(F("*********** Beginning Scan ***************"));    
+  BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
+  pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory
+  Serial.println("");
+  Serial.println(F("*********** Scan Ended ***************"));
+}
+
+void logDevice() {
+  Serial.println("Logging Devices");
+  
+  String groupNumber = "69";
+  String macAddr = getMacStr();
+  // Body of HTTP Post - empty list of devices to start out
+  String dataStr = "{\"gn\":\"" + groupNumber + "\",\"espmac\":\"" + macAddr + "\",\"devices\":[";
+  // manually format the json for each device in the map
+  for (std::map<String,String>::iterator it=bleDevices.begin(); it!=bleDevices.end(); ++it) {
+    String mac = it->first;
+    String rssi = it->second;
+    dataStr += "{\"mac\": \"" + mac + "\", \"rssi\": \"" + rssi + "\"},";
+  }
+  // remove extra comma
+  if (bleDevices.size() > 0)
+    dataStr.remove(dataStr.length() - 1);
+  // close the list and the json object
+  dataStr += "]}";
+  
+  // post the data
+  postJsonHTTP(API_LOG_DEVICE, dataStr);
+
+  // clear the map
+  bleDevices.clear();
+
+  // TODO: what to do on /log-device failure?
+}
 
 /*****************
  *   Main Loop 
  *****************/
 void loop()
 {
-  // TEMPORARY: to just run three times
-  if (iteration < 3) {
+  if (iteration < 1) {
+
     blink(); // tells us our device is up and running
-  
+
     scan();
     delay(200);
 
-    // m.insert(std::make_pair("a", 1));
-    
     // true when time to log-devices
     if (timeout) {
+      //checkWifiConnection();
       //logDevice();
 
       timeout = false;
