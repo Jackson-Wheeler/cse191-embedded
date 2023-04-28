@@ -14,6 +14,7 @@
 #define LED_PIN 2
 #define RESET_PIN 4
  
+const int RUN_FLAG = 1; // Change to 0 to make device idle after setup
  
 const String ERROR_RESP = "ERROR";
 const float runPeriod = 5; //seconds
@@ -330,13 +331,14 @@ void logDevice() {
   // close the list and the json object
   dataStr += "]}";
   
-  // post the data
-  postJsonHTTP(API_LOG_DEVICE, dataStr);
+  // attempt to post the data
+  String resp = postJsonHTTP(API_LOG_DEVICE, dataStr);
+  if (resp == ERROR_RESP){
+    // TODO: what to do on /log-device failure?
+  }
 
   // clear the map
   bleDevices.clear();
-
-  // TODO: what to do on /log-device failure?
 }
 
 /*****************
@@ -344,9 +346,7 @@ void logDevice() {
  *****************/
 void loop()
 {
-  // TEMPRORARY: for testing code
-  if (iteration < 10) {
-
+  if (RUN_FLAG) {
     blink(); // tells us our device is up and running
 
     scan();
@@ -355,12 +355,10 @@ void loop()
     // true when time to log-devices
     if (timeout) {
       checkWifiConnection();
-      //logDevice();
+      logDevice();
 
       timeout = false;
     }
-
-    iteration++;
   }
 }
 
