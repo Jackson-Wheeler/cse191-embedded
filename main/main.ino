@@ -44,9 +44,12 @@ void parseBeacon(BLEAdvertisedDevice dev) {
   // TODO: check if mac address exists in map
   // add if doesn't already exist
   
+  // get the values
   String mac = dev.getAddress().toString().c_str();
   String rssiStr = dev.getAddress().toString().c_str();
   double rssi = rssiStr.toDouble();
+
+  // log to terminal?
 
   macAddresses[mac] = rssi;
 }
@@ -300,7 +303,7 @@ void loop()
   
   // true when time to log-devices
   if (timeout) {
-    logDevices();
+    logDevice();
 
     timeout = false;
   }
