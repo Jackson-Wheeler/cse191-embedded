@@ -4,6 +4,7 @@
 #include "ArduinoJson.h"
 #include <Arduino.h>
 #include <Ticker.h>
+#include <map>
 
 #define LED_PIN 2
 
@@ -20,6 +21,11 @@ const char* password = "Fj7UPsFHb84e";
 String API_BASE_URL = "http://cse191.ucsd.edu/api"; // root url of api
 String API_HEALTH = API_BASE_URL + "/health";
 String API_REGISTER_DEVICE = API_BASE_URL + "/register-device";
+
+
+// create MAC storage, keys are mac addresses, values are rssi values
+std::map<std::string, double> macAddresses;
+
 
 String  postJsonHTTP(String url, String jLoad) {
 
@@ -129,13 +135,29 @@ void checkApiConn() {
 }
 
 void registerDevice() {
-  String groupNumber = "0";
+  String groupNumber = "69";
   String macAddr = getMacStr();
   // Body of HTTP Post - empty list of devices to start out
   String dataStr = "{\"gn\":\"" + groupNumber + "\",\"espmac\":\"" + macAddr + "\"}";
   
   postJsonHTTP(API_REGISTER_DEVICE, dataStr);
   // TODO: what to do on /register-device failure?
+}
+
+void logDevice() {
+  String groupNumber = "69";
+  String macAddr = getMacStr();
+  // Body of HTTP Post - empty list of devices to start out
+  String dataStr = "{\"gn\":\"" + groupNumber + "\",\"espmac\":\"" + macAddr + "\",\"devices\":[";
+  // manually format the json for each device
+  for (int i = 0; i < macAddresses.size(); i++) {
+    
+  }
+  
+  // post the data
+  postJsonHTTP(API_REGISTER_DEVICE, dataStr);
+
+  // TODO: what to do on /log-device failure?
 }
 
 void setup()
@@ -174,10 +196,11 @@ void setup()
 
   // Register device api call
   registerDevice();
+ 
 
   // setup our timebase
   mainTask.attach(runPeriod, setRunFlag);
-
+  
 }
 
 void setRunFlag() {
@@ -193,10 +216,16 @@ void blink() {
 void loop()
 {
   if (timeout) {
-    // do stuff - blink LED
-    blink();
+    
+    // perform the scan, get whatever data structure it gives
 
-    // CSE191 to do - scan BLE beacons
+    // convert that data structure to the map (skip existing values)
+
+
+    // m.insert(std::make_pair("a", 1));
+   
+    // POST the data
+
 
     // CSE191 to do - if beacons are found log them using our API
     // Example from starter code:
