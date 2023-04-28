@@ -129,8 +129,12 @@ void checkApiConn() {
 }
 
 void registerDevice() {
-  int groupNumber = 0;
+  String groupNumber = "0";
   String macAddr = getMacStr();
+  // Body of HTTP Post - empty list of devices to start out
+  String dataStr = "{\"gn\":\"" + groupNumber + "\",\"espmac\":\"" + macAddr + "\"}";
+  
+  postJsonHTTP(API_REGISTER_DEVICE, dataStr);
 }
 
 void setup()
