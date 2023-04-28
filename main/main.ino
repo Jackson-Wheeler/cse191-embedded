@@ -43,12 +43,12 @@ void parseBeacon(BLEAdvertisedDevice dev) {
 
   // check if mac address exists in map
   // add if doesn't already exist
+  
+  String mac = dev.getAddress().toString().c_str();
+  String rssiStr = dev.getAddress().toString().c_str();
+  double rssi = rssiStr.toDouble();
 
-  Serial.print(String(dev.getAddress().toString().c_str()));
-  Serial.print(String(dev.getAddress().toString().c_str()));
-  Serial.print(" ");
-  Serial.println(String(dev.getRSSI()));
-
+  macAddresses[mac] = rssi;
 }
 
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
@@ -209,7 +209,7 @@ void logDevice() {
   // manually format the json for each device in the map
   for (std::map<String,double>::iterator it=macAddresses.begin(); it!=macAddresses.end(); ++it) {
     String mac = it->first;
-    String rssi = std::to_string(it->second).c_str();
+    String rssi = String(it->second, 2);
     dataStr += "{\"mac\": \"" + mac + "\", \"rssi\": \"" + rssi + "\"},";
   }
   // remove extra comma
@@ -220,6 +220,9 @@ void logDevice() {
   
   // post the data
   postJsonHTTP(API_LOG_DEVICE, dataStr);
+
+  // clear the map
+  macAddresses.clear();
 
   // TODO: what to do on /log-device failure?
 }
