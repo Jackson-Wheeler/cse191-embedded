@@ -43,12 +43,15 @@ void parseBeacon(BLEAdvertisedDevice dev) {
 
   // TODO: check if mac address exists in map
   // add if doesn't already exist
+  
+  // get the values
+  String mac = dev.getAddress().toString().c_str();
+  String rssiStr = dev.getAddress().toString().c_str();
+  double rssi = rssiStr.toDouble();
 
-  Serial.print(String(dev.getAddress().toString().c_str()));
-  Serial.print(String(dev.getAddress().toString().c_str()));
-  Serial.print(" ");
-  Serial.println(String(dev.getRSSI()));
+  // log to terminal?
 
+  macAddresses[mac] = rssi;
 }
 
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
@@ -211,8 +214,7 @@ void logDevice() {
   // manually format the json for each device in the map
   for (std::map<String,double>::iterator it=macAddresses.begin(); it!=macAddresses.end(); ++it) {
     String mac = it->first;
-    //String rssi = std::toString(it->second).c_str();
-    String rssi = ""; // TEMP CODE
+    String rssi = String(it->second, 2);
     dataStr += "{\"mac\": \"" + mac + "\", \"rssi\": \"" + rssi + "\"},";
   }
   // remove extra comma
@@ -223,6 +225,9 @@ void logDevice() {
   
   // post the data
   postJsonHTTP(API_LOG_DEVICE, dataStr);
+
+  // clear the map
+  macAddresses.clear();
 
   // TODO: what to do on /log-device failure?
 }
@@ -249,15 +254,15 @@ void setup()
   Serial.println("*************** Booting up... ******************");
 
   // We start by connecting to a WiFi network
-  //connectToWifi();
+  connectToWifi();
   
-  //StaticJsonDocument<2000> locationDoc = getGeoLocation();
+  StaticJsonDocument<2000> locationDoc = getGeoLocation();
 
   // Check connection to our API
-  //checkApiConn();
+  checkApiConn();
 
   // Register device api call
-  //registerDevice();
+  registerDevice();
 
   setUpBLEScan();
 
