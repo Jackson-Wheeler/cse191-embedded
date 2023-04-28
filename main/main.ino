@@ -41,7 +41,7 @@ std::map<String, double> macAddresses;
  *****************/
 void parseBeacon(BLEAdvertisedDevice dev) {
 
-  // check if mac address exists in map
+  // TODO: check if mac address exists in map
   // add if doesn't already exist
 
   Serial.print(String(dev.getAddress().toString().c_str()));
@@ -202,6 +202,8 @@ void registerDevice() {
 }
 
 void logDevice() {
+  Serial.println("Logging Devices");
+  
   String groupNumber = "69";
   String macAddr = getMacStr();
   // Body of HTTP Post - empty list of devices to start out
@@ -280,32 +282,22 @@ void blink() {
  *****************/
 void loop()
 {
+  blink(); // tells us our device is up and running
+  Serial.println("working");
+  
+  // perform the scan, get whatever data structure it gives
+  Serial.println("*********** Beginning Scan ***************");    
+  strList = "";
+  BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
+  pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory
+  Serial.println("*********** Scan Ended ***************");
+  delay(500);
+
+  // m.insert(std::make_pair("a", 1));
+  
+  // true when time to log-devices
   if (timeout) {
-    blink(); // tells us our device is up and running
-    Serial.println("working");
-    
-    // perform the scan, get whatever data structure it gives
-    Serial.println("*********** Beginning Scan ***************");    
-    strList = "";
-    BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
-    pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory
-    delay(200);
-    Serial.println("*********** Scan Ended ***************");
-
-    // convert that data structure to the map (skip existing values)
-    
-
-    // m.insert(std::make_pair("a", 1));
-   
-    // POST the data
-
-
-    // CSE191 to do - if beacons are found log them using our API
-    // Example from starter code:
-      // String apiUrl = "http://cse191.ucsd.edu/api00/test";
-      // String dataStr = "{\"name\":\"Ian\",\"msg\":\"IoT is fun\"}";
-
-      // String resp = postJsonHTTP(apiUrl, dataStr);
+    logDevices();
 
     timeout = false;
   }
