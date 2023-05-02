@@ -9,6 +9,7 @@
 #include <BLEUtils.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
+#include <vector>
 
 
 #define LED_PIN 2
@@ -38,8 +39,8 @@ const String API_HEALTH = "http://cse191.ucsd.edu/api/health";
 const String API_REGISTER_DEVICE = "http://cse191.ucsd.edu/api/register-device";
 const String API_LOG_DEVICE = "http://cse191.ucsd.edu/api/log-devices";
 
-// create MAC storage, keys are mac addresses, values are rssi values
-std::map<String, String> bleDevices;
+// create MAC storage, keys are mac addresses, values are vectors of rssi values to be averaged out later
+std::map<String, std::vector<double>> bleDevices;
 
 /*****************
  *   Scanning 
@@ -49,12 +50,19 @@ void parseBeacon(BLEAdvertisedDevice dev) {
   
   // get the values
   String mac = String(dev.getAddress().toString().c_str());
-  String rssi = String(dev.getRSSI());
+  double rssi = (String(dev.getRSSI())).toDouble();
+ 
 
   // Add entry to map if doesn't already exist
   if(!bleDevices.count(mac)) {
-    bleDevices[mac] = rssi;
+    std::vector<double> v;
+    v.push_back(rssi);
+    bleDevices[mac] = v;
+  // add rssi to vector for existing mac addresses
+  } else {
+    bleDevices[mac].push_back(rssi);
   }
+  
 }
 
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
@@ -332,9 +340,14 @@ void logDevice() {
   // Body of HTTP Post - empty list of devices to start out
   String dataStr = "{\"gn\":\"" + groupNumber + "\",\"espmac\":\"" + macAddr + "\",\"devices\":[";
   // manually format the json for each device in the map
-  for (std::map<String,String>::iterator it=bleDevices.begin(); it!=bleDevices.end(); ++it) {
+  for (std::map<String,std::vector<double>>::iterator it=bleDevices.begin(); it!=bleDevices.end(); ++it) {
     String mac = it->first;
-    String rssi = it->second;
+    std::vector<double> vecrssi = it->second;
+    double sum = 0;
+    for (int i = 0; i != vecrssi.size(); i++){
+      sum += vecrssi[i];
+    }
+    String rssi = String(sum/vecrssi.size(), 2);
     dataStr += "{\"mac\": \"" + mac + "\", \"rssi\": \"" + rssi + "\"},";
   }
   // remove extra comma
@@ -380,4 +393,3 @@ void loop()
     }
   }
 }
-
