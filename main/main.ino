@@ -29,10 +29,10 @@ int scan_fail_count = 0;
 BLEScan* pBLEScan;
 Ticker mainTask;
 
-//const char* ssid     = "UCSD-DEVICE"; 
-//const char* password = "Fj7UPsFHb84e";
-const char* ssid     = "RESNET-GUEST-DEVICE"; 
-const char* password = "ResnetConnect";
+const char* ssid     = "UCSD-DEVICE"; 
+const char* password = "Fj7UPsFHb84e";
+//const char* ssid     = "RESNET-GUEST-DEVICE"; 
+//const char* password = "ResnetConnect";
 
 const String API_BASE_URL = "http://cse191.ucsd.edu/api"; // root url of api
 const String API_HEALTH = "http://cse191.ucsd.edu/api/health";
