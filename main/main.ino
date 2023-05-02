@@ -1,7 +1,7 @@
 #include "WiFi.h"
 #include "HTTPClient.h"
 #include "esp_wps.h"
-// #include "ArduinoJson.h"
+#include "ArduinoJson.h"
 #include <Arduino.h>
 #include <Ticker.h>
 #include <map>
@@ -18,7 +18,7 @@
 const int RUN_FLAG = 1; // Change to 0 to make device idle after setup
  
 const String ERROR_RESP = "ERROR";
-const float runPeriod = 5; //seconds
+float runPeriod = 20; //seconds
 const int scanTime = 1; //In seconds
 int iteration = 0;
 bool timeout = false;
@@ -29,10 +29,10 @@ int scan_fail_count = 0;
 BLEScan* pBLEScan;
 Ticker mainTask;
 
-const char* ssid     = "UCSD-DEVICE"; 
-const char* password = "Fj7UPsFHb84e";
-//const char* ssid     = "RESNET-GUEST-DEVICE"; 
-//const char* password = "ResnetConnect";
+//const char* ssid     = "UCSD-DEVICE"; 
+//const char* password = "Fj7UPsFHb84e";
+const char* ssid     = "RESNET-GUEST-DEVICE"; 
+const char* password = "ResnetConnect";
 
 const String API_BASE_URL = "http://cse191.ucsd.edu/api"; // root url of api
 const String API_HEALTH = "http://cse191.ucsd.edu/api/health";
@@ -189,7 +189,6 @@ void connectToWifi() {
 void checkApiConn() {
   HTTPClient httpC;
   String url = API_HEALTH;
-  bool connected = true;
   
   Serial.print(F("Checking API connection: "));
   Serial.println(url);
@@ -224,7 +223,7 @@ void registerDevice() {
   String groupNumber = "0";
   String macAddr = getMacStr();
   // Body of HTTP Post - empty list of devices to start out
-  String dataStr = "{\"gn\":\"" + groupNumber + "\",\"espmac\":\"" + macAddr + "\"}";
+  String dataStr = "{\"espmac\":\"" + macAddr + "\"}";
   
   String resp = postJsonHTTP(API_REGISTER_DEVICE, dataStr);
     
@@ -338,7 +337,7 @@ void logDevice() {
   String groupNumber = "0";
   String macAddr = getMacStr();
   // Body of HTTP Post - empty list of devices to start out
-  String dataStr = "{\"gn\":\"" + groupNumber + "\",\"espmac\":\"" + macAddr + "\",\"devices\":[";
+  String dataStr = "{\"espmac\":\"" + macAddr + "\",\"devices\":[";
   // manually format the json for each device in the map
   for (std::map<String,std::vector<double>>::iterator it=bleDevices.begin(); it!=bleDevices.end(); ++it) {
     String mac = it->first;
@@ -367,6 +366,17 @@ void logDevice() {
   } else {
     // success
     log_fail_count = 0;
+    // get the new runPeriod value from the response
+    DynamicJsonDocument doc(1024);
+    deserializeJson(doc, resp);
+    JsonObject obj = doc.as<JsonObject>();
+    int newRunPeriod = obj[String("sample_period")];
+    // update it if it is new
+    if (newRunPeriod != runPeriod) {
+      runPeriod = newRunPeriod;
+      mainTask.detach();
+      mainTask.attach(runPeriod, setRunFlag);
+    }
   }
 
   // clear the map
