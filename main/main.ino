@@ -18,7 +18,8 @@
 const int RUN_FLAG = 1; // Change to 0 to make device idle after setup
  
 const String ERROR_RESP = "ERROR";
-float runPeriod = 20; //seconds
+int runPeriod = 20; //seconds
+int rssiThreshold = -70; // decibels
 const int scanTime = 1; //In seconds
 int iteration = 0;
 bool timeout = false;
@@ -333,7 +334,7 @@ void scan() {
 
 void logDevice() {
   Serial.println("Logging Devices");
-  
+  bool anyDeviceLogged = false;
   String groupNumber = "0";
   String macAddr = getMacStr();
   // Body of HTTP Post - empty list of devices to start out
@@ -341,16 +342,24 @@ void logDevice() {
   // manually format the json for each device in the map
   for (std::map<String,std::vector<double>>::iterator it=bleDevices.begin(); it!=bleDevices.end(); ++it) {
     String mac = it->first;
+    // calculate average RSSI
     std::vector<double> vecrssi = it->second;
     double sum = 0;
     for (int i = 0; i != vecrssi.size(); i++){
       sum += vecrssi[i];
     }
-    String rssi = String(sum/vecrssi.size(), 2);
-    dataStr += "{\"mac\": \"" + mac + "\", \"rssi\": \"" + rssi + "\"},";
+    double avg = sum / vecrssi.size();
+    // skip values less than threshold
+    if (avg < rssiThreshold) {
+      continue;
+    }
+    String rssi = String(avg, 0);
+    // add RSSI to JSON data
+    dataStr += "{\"mac\": \"" + mac + "\", \"rssi\": " + rssi + "},";
+    anyDeviceLogged = true;
   }
-  // remove extra comma
-  if (bleDevices.size() > 0)
+  // remove extra comma only if data was found
+  if (anyDeviceLogged)
     dataStr.remove(dataStr.length() - 1);
   // close the list and the json object
   dataStr += "]}";
@@ -371,11 +380,17 @@ void logDevice() {
     deserializeJson(doc, resp);
     JsonObject obj = doc.as<JsonObject>();
     int newRunPeriod = obj[String("sample_period")];
+    int newRssiThreshold = obj[String("rssi_threshold")];
     // update it if it is new
-    if (newRunPeriod != runPeriod) {
+    if (newRunPeriod != 0 && newRunPeriod != runPeriod) {
+      Serial.println("New log time: " + String(newRunPeriod));
       runPeriod = newRunPeriod;
       mainTask.detach();
       mainTask.attach(runPeriod, setRunFlag);
+    }
+    if (newRssiThreshold != 0 && newRssiThreshold != rssiThreshold) {
+      Serial.println("New RSSI threshold: " + String(newRssiThreshold));
+      rssiThreshold = newRssiThreshold;
     }
   }
 
