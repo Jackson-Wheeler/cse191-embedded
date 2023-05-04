@@ -19,8 +19,10 @@ const int RUN_FLAG = 1; // Change to 0 to make device idle after setup
  
 const String ERROR_RESP = "ERROR";
 int runPeriod = 20; //seconds
-int rssiThreshold = -70; // decibels
-const int scanTime = 1; //In seconds
+// threshold in decibels, set this to be default tight so that it can hopefully 
+// get a successful request through and receive the new threshold value
+int rssiThreshold = -60; 
+const int scanTime = 1; // In seconds, active time for each scan
 int iteration = 0;
 bool timeout = false;
 
@@ -40,8 +42,9 @@ const String API_HEALTH = "http://cse191.ucsd.edu/api/health";
 const String API_REGISTER_DEVICE = "http://cse191.ucsd.edu/api/register-device";
 const String API_LOG_DEVICE = "http://cse191.ucsd.edu/api/log-devices";
 
-// create MAC storage, keys are mac addresses, values are vectors of rssi values to be averaged out later
-std::map<String, std::vector<double>> bleDevices;
+// create MAC storage, keys are mac addresses, values are pairs of rssiSum:count
+std::map<String, std::pair<double, int>> bleDevices;
+
 
 /*****************
  *   Scanning 
@@ -56,12 +59,14 @@ void parseBeacon(BLEAdvertisedDevice dev) {
 
   // Add entry to map if doesn't already exist
   if(!bleDevices.count(mac)) {
-    std::vector<double> v;
-    v.push_back(rssi);
-    bleDevices[mac] = v;
+    std::pair<double, int> rssiPair;
+    rssiPair.first = rssi; // set the rolling sum of the RSSI
+    rssiPair.second = 1; // set the number of values summed to 1
+    bleDevices[mac] = rssiPair;
   // add rssi to vector for existing mac addresses
   } else {
-    bleDevices[mac].push_back(rssi);
+    bleDevices[mac].first += rssi; // add to rolling sum
+    bleDevices[mac].second += 1; // inrement count
   }
   
 }
@@ -340,15 +345,12 @@ void logDevice() {
   // Body of HTTP Post - empty list of devices to start out
   String dataStr = "{\"espmac\":\"" + macAddr + "\",\"devices\":[";
   // manually format the json for each device in the map
-  for (std::map<String,std::vector<double>>::iterator it=bleDevices.begin(); it!=bleDevices.end(); ++it) {
+  // iterate the map of mac: <rssiSum, count>
+  for (std::map<String,std::pair<double, int>>::iterator it=bleDevices.begin(); it!=bleDevices.end(); ++it) {
     String mac = it->first;
     // calculate average RSSI
-    std::vector<double> vecrssi = it->second;
-    double sum = 0;
-    for (int i = 0; i != vecrssi.size(); i++){
-      sum += vecrssi[i];
-    }
-    double avg = sum / vecrssi.size();
+    std::pair<double, int> rssiPair = it->second;
+    double avg = rssiPair.first / rssiPair.second;
     // skip values less than threshold
     if (avg < rssiThreshold) {
       continue;
