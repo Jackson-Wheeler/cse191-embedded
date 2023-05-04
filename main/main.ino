@@ -23,8 +23,8 @@ int runPeriod = 20; //seconds
 // get a successful request through and receive the new threshold value
 int rssiThreshold = -60; 
 const int scanTime = 1; // In seconds, active time for each scan
-int iteration = 0;
-bool timeout = false;
+bool timeout = false; // flag to log data
+const int MAX_JSON_SIZE = 4500;
 
 int log_fail_count = 0;
 int scan_fail_count = 0;
@@ -127,37 +127,6 @@ String postJsonHTTP(String url, String jLoad) {
 
   return resp;
 }
-
-// StaticJsonDocument<2000>  getGeoLocation() {
-
-//   StaticJsonDocument<2000> jDoc;
-  
-//   // get geo location info
-//   String locStr = "https://api.iplocation.net/?ip=99.10.120.238";
-  
-//   // debug info
-//   Serial.println("Getting Location: "+locStr);
-//   String loc = postJsonHTTP(locStr, "");
-
-//   // debug
-//   Serial.println(loc);
-
-//   // parse json (need zipcode and timezone) -> jDoc
-//   DeserializationError error = deserializeJson(jDoc, loc);
-  
-//   // Test if parsing succeeds.
-//   if (!error) {
-//     // do something with data - example
-//     String i = jDoc["isp"];
-//     Serial.println("connected via "+i);
-//   }
-//   else {
-//     Serial.println("parseObject() failed");
-//   }
-
-//   return jDoc;
-
-// }
 
 String getMacStr() {
   char buffer[24];
@@ -355,6 +324,12 @@ void logDevice() {
     if (avg < rssiThreshold) {
       continue;
     }
+    // skip all future values if over max post request size
+    if (dataStr.length() > MAX_JSON_SIZE - 42 - 2) {
+      Serial.println("Skipping mac " + mac + ", data limit reached");
+      continue;
+    }
+    // Convert double to string with 0 decimal points
     String rssi = String(avg, 0);
     // add RSSI to JSON data
     dataStr += "{\"mac\": \"" + mac + "\", \"rssi\": " + rssi + "},";
