@@ -1,4 +1,4 @@
-# Embedded code for CSE191 project
+# Embedded code for IoT Project - Measuring Population Density in RIMAC
 Records all nearby bluetooth beaconing devices and their signal strength, then reports that data to the backend API through HTTP Requests.
 
 Runs on ESP32 Device.
