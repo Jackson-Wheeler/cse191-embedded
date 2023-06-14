@@ -1,7 +1,7 @@
 # Embedded code for IoT Project - Measuring Population Density in RIMAC (UCSD Fitness Center)
-Above code deployed on ~25 devices (ESP32 Board) for data collection in RIMAC during May 2023.
+Above code deployed on ~25 IoT devices (ESP32 Arduino boards) for data collection in RIMAC during May 2023.
 
-Each ESP32 board records all nearby bluetooth beaconing devices and their signal strength, then reporting that data to the backend API through HTTP Requests.
+Each ESP32 board records all nearby bluetooth beaconing devices and their signal strength, then reporting that data to the backend API through HTTP.
 
 # Embedded Code Notes
 setup() function runs after every reset of the Arduino board
