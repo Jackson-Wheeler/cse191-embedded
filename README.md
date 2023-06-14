@@ -1,7 +1,9 @@
-# Embedded code for IoT Project - Measuring Population Density in RIMAC
-Records all nearby bluetooth beaconing devices and their signal strength, then reports that data to the backend API through HTTP Requests. (Runs on ESP32 Device)
+# Embedded code for IoT Project - Measuring Population Density in RIMAC (UCSD Fitness Center)
+Above code deployed on ~25 devices (ESP32 Board) for data collection in RIMAC during May 2023.
 
-# Notes
+Each ESP32 board records all nearby bluetooth beaconing devices and their signal strength, then reporting that data to the backend API through HTTP Requests.
+
+# Embedded Code Notes
 setup() function runs after every reset of the Arduino board
 
 loop() function is the main loop that repeatedly runs after setup()
